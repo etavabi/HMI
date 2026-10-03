@@ -1,0 +1,218 @@
+HMI Magnetogram Polarity Time-Stack Visualization
+README for the code and data repository
+Ehsan Tavabi
+MATLAB code and data for reproducing the 3D polarity time-stack (“butterfly”-style) figures based
+on SDO/HMI line-of-sight magnetograms.
+The script HMI_polarity_visualization_sunspot_20250917.m reads a time series of HMI FITS
+magnetograms, separates positive and negative polarity pixels, builds two binary volumes (x, y,
+time), smooths them, and renders them as 3D isosurfaces stacked along the time axis (red = positive
+polarity, blue = negative polarity). A context image (ds9.tiff) is drawn as a semi-transparent base
+plane.
+• Code repository: <GitHub URL>
+• Data archive (Zenodo): <DOI: 10.5281/zenodo.XXXXXXX>
+• Associated manuscript: <Title, Science, manuscript number>
+• Contact: Ehsan Tavabi, <email>
+• License: <e.g., MIT for code / CC BY 4.0 for data>
+1 Contents of the archive
+After unzipping HMI_DATA.zip you should obtain (names in <...> are to be matched to your actual
+archive):
+HMI_DATA/
+|-- HMI_Fits/ # HMI FITS magnetograms, 2025-09-17 to 2025-09-19 (*.fits)
+|-- ds9.tiff # Context image used as base plane (rendered with SAOImage DS9)
+|-- <header_file_2025> # JSOC header/query information for the 2025 dataset
+‘-- 2017_05_19/
+|-- HMI_Fits/ # HMI FITS magnetograms, 2017-05-19 (*.fits)
+|-- ds9.tiff
+‘-- <header_file_2017> # JSOC header/query information for the 2017 dataset
+HMI_polarity_visualization_sunspot_20250917.m
+README.md
+Adjust the tree above to match the final layout of your Zenodo record.
+2 Requirements
+Item Requirement
+MATLAB R2025b or later (the script uses fig.Theme, available only in recent
+releases).
+1
+Item Requirement
+Toolboxes Statistics and Machine Learning Toolbox (mad, prctile); Image Processing
+Toolbox recommended (imread, rgb2ind, ind2rgb, warp).
+Memory The full cube is held in RAM (rows × columns × frames, double precision).
+For 198 × 198 pixels and about 3,900 frames (two days at 45 s cadence) this
+is about 1.2 GB per cube; the script keeps several cubes at once, so 16 GB
+RAM or more is recommended.
+OS Tested on Windows (default paths use D:\ ); Linux/macOS work after
+changing the paths.
+3 Step-by-step instructions
+Step 1. Download the data
+Download HMI_DATA.zip from Zenodo (<DOI>) and HMI_polarity_visualization_sunspot_20250917.m
+from GitHub (or from the same Zenodo record).
+Step 2. Unzip and place the data
+Unzip HMI_DATA.zip so that the FITS files and ds9.tiff are located at:
+D:\HMI_DATA\HMI_Fits\*.fits
+D:\HMI_DATA\ds9.tiff
+If you prefer another location (any drive, Linux/macOS), do not move files blindly: edit the two
+path lines at the top of the script instead:
+dataDir = ’D:\HMI_DATA\HMI_Fits\’; % folder containing the FITS files
+P = imread(’D:\HMI_DATA\ds9.tiff’); % context image
+Step 3. Open and run the code
+1. Start MATLAB R2025b or newer.
+2. Open HMI_polarity_visualization_sunspot_20250917.m.
+3. Check the paths (Step 2) and the time-axis labels (Section 5).
+4. Press Run. The two-day dataset (2025-09-17 to 2025-09-19) is processed in its entirety.
+The script produces a full-screen 3D figure and saves it as Final_1.fig in the current MATLAB
+folder.
+Step 4. (Optional) Longer time intervals
+The archive contains the two-day interval only. For a longer interval:
+1. Open the header file supplied in the archive. It records the JSOC data series, the target
+region/cutout, tracking, cadence, and time range used.
+2. Go to the JSOC data export page: http://jsoc.stanford.edu/ajax/exportdata.html.
+2
+3. Reproduce the same query (same series, same cutout/tracking parameters and image size) but
+with the desired start time and duration, then download the FITS files.
+4. Place the FITS files in D:\HMI _DATA\HMI _Fits\ (or the folder set in dataDir).
+5. Update the z-axis tick positions and labels (Section 5), since the number of frames
+changes.
+Important: all frames must have identical dimensions and the same cutout/tracking so that pixels
+correspond between frames.
+Step 5. Reproducing the 2017-05-19 dataset
+The same procedure applies to the 2017-05-19 data (its header file is included in the archive):
+1. Place that FITS set and its ds9.tiff at the locations in Step 2 (or change dataDir and the
+imread path to point to the 2017 folders).
+2. Update the z-axis tick positions and labels to the 2017-05-19 time range (Section 5).
+3. Run the script as in Step 3. For longer intervals, follow Step 4 using the 2017 header file.
+4 Method summary
+1. Load all FITS magnetograms (cropped to the requested region).
+2. Temporal equalization: each frame is re-centered and re-scaled using robust statistics (me-
+dian and median absolute deviation) relative to a time-series-wide reference, removing frame-
+to-frame photometric drift before thresholding.
+3. Global percentile clipping: low/high percentiles are computed once over the full equalized
+cube.
+4. Polarity separation and thresholding: positive and negative pixels are separated by sign,
+each normalized independently to [1, 100], and thresholded at (mean of the nonzero pixels)/0.8.
+The two masks are checked to be mutually exclusive.
+5. Volume rendering: the binary masks are scaled, smoothed with a 3D Gaussian kernel, and
+displayed as isosurfaces with three-point lighting.
+5 User-adjustable parameters
+All parameters are at the top of the script unless stated otherwise.
+Input and cropping
+Parameter Default Description
+dataDir ’D:\HMI
+_DATA\HMI
+_Fits\’
+Folder containing the FITS magnetograms.
+filePattern ’*.fits’ File-name pattern passed to dir. Files are
+processed in the sorted order returned by dir, so
+file names must sort chronologically.
+3
+Parameter Default Description
+cropRowsRequested,
+cropColsRequested
+1:198 Pixel region (rows/columns) to analyze. It is
+automatically clamped to the actual image size,
+with a warning.
+startIdx 1 Index of the first file to use. Increase it to skip
+bad or incomplete initial frames.
+P = imread(...) ds9.tiff Context image used as the base plane; flipud
+aligns its orientation with the data.
+Intensity normalization and thresholding
+Parameter Default Description
+lowPct, highPct 0.01, 99.9 Global percentiles used as the negative/positive
+normalization limits. They control how strongly
+extreme-field pixels influence the scaling.
+Divisor 0.8 (in
+threshold, thresholdR)
+0.8 Polarity threshold = mean of nonzero normalized
+pixels / 0.8. Increasing the divisor lowers the
+threshold (more pixels included); decreasing it
+raises the threshold (only stronger fields).
+Volume smoothing and isosurface
+Parameter Default Description
+maskScale 35 Value assigned to masked voxels in the binary
+volume; sets the amplitude of the volume
+relative to isoLevel.
+isoLevel 29 Isosurface level of the smoothed volume. Higher
+values give tighter, smaller surfaces; lower values
+give larger, more connected structures. Keep it
+below maskScale.
+smoothSigma 29 Size of the Gaussian kernel passed to smooth3
+(third argument; the Gaussian sigma keeps the
+MATLAB default). Larger values smooth more
+strongly in space and time.
+Base plane (context image)
+Parameter Description
+Zk2 =
+20-((Xk-99).^2+(Yk-99).^2)./1500
+Height of the base surface. The constant 20 sets its
+vertical position; 1500 sets its curvature (larger =
+flatter). The value 99 is the center of the 198 × 198 grid
+and must be changed if the crop size changes.
+meshgrid(1:198,1:198) Grid size of the base plane; must match the crop size.
+set(h1,’FaceAlpha’,0.3) Transparency of the base image.
+4
+Appearance and view
+Parameter Default Description
+Face colors in
+renderPolarityVolume(...)
+red [0.86 0.08
+0.24] (positive), blue
+[0.25 0.41 0.88]
+(negative)
+RGB colors of the two polarities.
+daspect(gca,[1 1 10]) [1 1 10] Aspect ratio; the last number stretches or
+compresses the time axis.
+ax.View [420, 17] Camera azimuth and elevation.
+alpha(0.85) 0.85 Surface transparency.
+applyStandardLighting() key/fill/rim Three-point lighting and material dull.
+Light positions and colors can be edited in
+the function.
+colormap(hot(500)) hot Colormap applied to the base image.
+Time-axis labels (must be edited for each dataset)
+zticks([10, 957, 1914, ...]);
+zticklabels({’17-Sep 14:00’, ’18-Sep 02:00’, ...});
+Tick positions are frame indices and the labels are the corresponding UT times. In the supplied
+script, 957 frames correspond to 12 hours, which implies the 45 s HMI cadence. For a different time
+range, cadence, or number of frames, recompute the positions as frameIndex = (t − t0)/cadence, and
+make sure the last tick does not exceed the number of frames in the cube.
+Output
+Item Description
+savefig(gcf,’Final_1.fig’,’-v7.3’)Name and format of the saved figure.
+Rotation movie block (commented) Uncomment to export an MP4 of the rotating 3D scene;
+v.FrameRate and the azimuth step (0:2:360) control
+speed and smoothness.
+6 Data description and provenance
+• Instrument/data: Solar Dynamics Observatory (SDO) / Helioseismic and Magnetic Imager
+(HMI) line-of-sight magnetograms.
+• Source: Joint Science Operations Center (JSOC), Stanford University, http://jsoc.stanford.
+edu.
+• Intervals provided: 2025-09-17 to 2025-09-19 and 2017-05-19.
+• Format: FITS, one file per time step; image data read from the primary ’Image’ extension.
+• Query details: data series, region/cutout, tracking, and cadence are documented in the
+header files included in the archive.
+5
+7 Troubleshooting
+Problem Likely cause / fix
+Not enough FITS files
+found
+dataDir is wrong, or filePattern does not match the file
+names.
+Warning about clamped crop
+region
+The FITS frames are smaller than 198 × 198; adjust the crop
+and the base-plane grid (meshgrid, center value 99).
+Out of memory Reduce the crop region, use a shorter interval, or use a
+machine with more RAM.
+Figure appears empty or
+sparse
+Check that isoLevel is below maskScale and that the
+thresholds and smoothSigma are not too restrictive.
+Time labels do not match the
+data
+Recompute the z-tick positions (Section 5).
+fig.Theme error Use MATLAB R2025b or newer, or remove that line.
+8 Citation
+If you use this code or data, please cite:
+<Author list>, <Title>, Science (year), DOI: <paper DOI>
+Data and code: <DOI: 10.5281/zenodo.XXXXXXX>
+HMI data courtesy of NASA/SDO and the HMI science team.
+9 Acknowledgements
+SDO is a mission of NASA’s Living With a Star program. HMI data are distributed by JSOC at
+Stanford University.
